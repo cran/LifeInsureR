@@ -1,7 +1,7 @@
 Package: LifeInsureR
 Type: Package
-Version: 1.0.0
-Date: 2023-10-27
+Version: 1.0.1
+Date: 2025-06-10
 Title: Modelling Traditional Life Insurance Contracts
 Description: R6 classes to model traditional life insurance
     contracts like annuities, whole life insurances or endowments. Such life
@@ -22,18 +22,19 @@ Imports: R6, MortalityTables, objectProperties, lubridate, openxlsx,
         dplyr, scales, abind, stringr, methods, rlang, rmarkdown,
         kableExtra, pander, tidyr
 License: GPL (>= 2)
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.2
 Collate: 'HelperFunctions.R' 'InsuranceParameters.R'
         'ProfitParticipation_Functions.R' 'ProfitParticipation.R'
-        'InsuranceTarif.R' 'InsuranceContract.R' 'contractGrid.R'
-        'create_LIR_project.R' 'exportInsuranceContract_xlsx.R'
-        'showVmGlgExamples.R' 'exportInsuranceContractExample.R'
-Suggests: knitr, magrittr, tibble, testthat, fs
+        'InsuranceTarif.R' 'InsuranceContract.R' 'RoundingHelper.R'
+        'contractGrid.R' 'create_LIR_project.R'
+        'exportInsuranceContract_xlsx.R' 'showVmGlgExamples.R'
+        'exportInsuranceContractExample.R'
+Suggests: knitr, magrittr, tibble, testthat, fs, here, purrr
 VignetteBuilder: knitr
 URL: https://gitlab.open-tools.net/R/LifeInsureR,
         https://github.com/kainhofer/LifeInsureR
 BugReports: https://gitlab.open-tools.net/R/LifeInsureR/-/issues
 NeedsCompilation: no
-Packaged: 2023-10-27 15:52:02 UTC; 036134
+Packaged: 2025-06-14 23:30:56 UTC; OpenTools
 Repository: CRAN
-Date/Publication: 2023-11-06 18:10:04 UTC
+Date/Publication: 2025-06-15 00:00:07 UTC

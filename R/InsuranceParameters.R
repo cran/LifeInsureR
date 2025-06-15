@@ -70,7 +70,7 @@ setCost = function(costs, type, basis = "SumInsured", frequency = "PolicyPeriod"
 #'                           even if the insured has already dies (for term-fix insurances)
 #' @param unitcosts Unit costs (absolute monetary amount, during premium period)
 #' @param unitcosts.PolicyPeriod Unit costs (absolute monetary amount, during full contract period)
-#' 
+#'
 #' @returns an insurance cost structure (multi-dimensional matrix)
 #'
 #' @examples
@@ -350,6 +350,16 @@ InsuranceContract.Values = list(
 #'     \item{\code{$deathBenefit}}{The yearly relative death benefit (relative
 #'               to the initial sum insured); Can be set to a \code{function(len,
 #'               params, values)}, e.g. \code{deathBenefit = deathBenefit.linearDecreasing}}
+#'     \item{\code{$survivalBenefit}}{The survival benefit (relative to the initial
+#'               sum insured). By default, for (pure) endowments a survival benefit
+#'               of 1 is assumed at the end of the contract period. Other values
+#'               (e.g. double survival benefit in endowments) or multiple survival
+#'               payments during the contract period can be set with this parameter.
+#'               A single numeric value indicates a single survival benefit at
+#'               the end of the contract, a vector of numeric values indicates
+#'               yearly survival benefits (not neccessarily with a survival
+#'               payment at the end of the contract). Can be set to a \code{function(len,
+#'               params, values)} returning the benefit as a numeric value or vector.}
 #'     \item{\code{$benefitParameter}}{(optional) Tariff-specific parameter to
 #'               indicate special benefit conditions (e.g. for non-constant benefits
 #'               the initial starting value, or a minimum benefit, etc.). This
@@ -388,10 +398,10 @@ InsuranceContract.Values = list(
 #' while prototyping a new product or a product change).
 #'
 #' \describe{
-#'     \item{\code{$mortalityTable}}{The [mortalityTable] object describing the
+#'     \item{\code{$mortalityTable}}{The \link[MortalityTables]{mortalityTable} object describing the
 #'               mortality of the insured}
 #'     \item{\code{$invalidityTable}}{For contracts with invalidity benefits,
-#'               the [mortalityTable] object describing the probabilities of
+#'               the \link[MortalityTables]{mortalityTable} object describing the probabilities of
 #'               invalidity}
 #'     \item{\code{$invalidityEndsContract}}{For contracts with invalidity
 #'               benefits, whether a payment of an invalidity benefit ends the
@@ -442,6 +452,8 @@ InsuranceContract.Values = list(
 #'               that can be waived at all. }
 #' }
 #'
+#'
+#'
 #' ## Elements of sublist \code{InsuranceContract.ParameterDefault$Loadings}
 #'
 #' \describe{
@@ -481,6 +493,8 @@ InsuranceContract.Values = list(
 #'               reserves on the Zillmer reserve as opposed to the adequate
 #'               reserve) (default: TRUE)}
 #'     \item{\code{$betaGammaInZillmer}}{Whether beta and gamma-costs should be
+#'               included in the Zillmer premium calculation}
+#'     \item{\code{$gammaInZillmer}}{Whether gamma- (but not beta-) costs should be
 #'               included in the Zillmer premium calculation}
 #'     \item{\code{$alphaRefundLinear}}{Whether the refund of alpha-costs on
 #'               surrender is linear in t or follows the NPV of an annuity}
@@ -556,6 +570,7 @@ InsuranceContract.Values = list(
 #'     \item{\code{$adjustPremiums}}{Adjust the resulting premiums. \code{function(premiums = list(premiums, coefficients, sumInsured), params, values)}}
 #'     \item{\code{$adjustPVForReserves}}{Adjust the absolute present value vectors used to derive reserves (e.g. when a sum rebate is subtracted from the gamma-cost reserves without influencing the premium calculation). \code{function(absPV, params, values)}}
 #'     \item{\code{$premiumRebateCalculation}}{Calculate the actual premium rebate from the rebate rate (e.g. when the premium rate is given as a yearly cost reduction applied to a single-premium contract). \code{function(premiumRebateRate, params = params, values = values)}}
+#'     \item{\code{$Rounding}}{A [RoundingHelper] object to specify rounding of intermediate values. Alternatively, a named list of rounding specifications can be given, which is used to construct a new [RoundingHelper] object.}
 #' }
 #'
 #'
@@ -592,6 +607,7 @@ InsuranceContract.ParameterDefaults = list(
         premiumIncrease = 1,                    # The yearly growth factor of the premium, i.e. 1.05 means +5% increase each year; a Vector describes the premiums for all years
         annuityIncrease = 1,                    # The yearly growth factor of the annuity payments, i.e. 1.05 means +5% incrase each year; a vector describes the annuity unit payments for all years
         deathBenefit = 1,                       # The yearly relative death benefit (relative to the initial sum insured); Can be fixed, e.g. 0.5 for 50% death cover, or  set to a function(len, params, values) like deathBenefit = deathBenefit.linearDecreasing
+        survivalBenefit = NULL,                 # The custom survival benefit (for endowments and pure endowments). By default, a single payment of 1 at the end of the contract is assumed, unless this parameter give a different value/vector.
         benefitParameter = NULL,                # Tariff-Specific additional parameter to define custom benefits (e.g. a minimum death benefit quota, an initial )
 
         costWaiver = 0,                         # The cost waiver (up to minCosts, 0=no cost waiver, 1=full cost waiver down to minCosts)
@@ -617,7 +633,7 @@ InsuranceContract.ParameterDefaults = list(
         benefitFrequencyOrder = function(params, ...) { if (is.null(params$Loadings$benefitFrequencyLoading)) 0 else -1}
     ),
     Costs = initializeCosts(),
-    minCosts = NULL,               # Base costs, which cannot be waived
+    minCosts = NULL,                            # Base costs, which cannot be waived
     Loadings = list( # Loadings can also be function(sumInsured, premiums)
         ongoingAlphaGrossPremium = 0,           # Acquisition cost that increase the gross premium
         tax = 0.04,                             # insurance tax, factor on each premium paid
@@ -638,6 +654,7 @@ InsuranceContract.ParameterDefaults = list(
     Features = list(                            # Special cases for the calculations
         zillmering = TRUE,                      # Whether the contract uses Zillmering (and bases reserves on the Zillmer reserve as opposed to the adequate reserve)
         betaGammaInZillmer = FALSE,             # Whether beta and gamma-costs should be included in the Zillmer premium calculation
+        gammaInZillmer = FALSE,                 # Whether gamma- (but not beta-) costs should be included in the Zillmer premium calculation
         alphaRefundLinear  = TRUE,              # Whether the refund of alpha-costs on surrender is linear in t or follows the NPV of an annuity
         useUnearnedPremiums = isRegularPremiumContract, # Whether unearned premiums should be calculated in the balance sheet reserves. Otherwise, a premium paid at the beginning of the period is added to the reserve for balance-sheet purposes.
         surrenderIncludesCostsReserves = TRUE,  # Whether (administration) cost reserves are paid out on surrender (i.e. included in the surrender value before surrender penalties are applied)
@@ -680,7 +697,8 @@ InsuranceContract.ParameterDefaults = list(
       adjustPremiumCoefficients = NULL,  # function(coeff, type = type, premiums = premiums, params = params, values = values, premiumCalculationTime = premiumCalculationTime)
       adjustPremiums = NULL,             # function(premiums = list(premiums, coefficients, sumInsured), params, values)
       adjustPVForReserves = NULL,        # function(absPresentValues, params, values)
-      premiumRebateCalculation = NULL    # function(premiumRebateRate, params = params, values = values)
+      premiumRebateCalculation = NULL,   # function(premiumRebateRate, params = params, values = values)
+      Rounding = NULL                    # Rounding helper to specify particular rounding of values
     )
 );
 

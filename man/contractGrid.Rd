@@ -82,11 +82,11 @@ the dimension label.
 \examples{
 library("MortalityTables")
 mortalityTables.load("Austria_Annuities_AVOe2005R")
-# A trivial deferred annuity tariff with no costs, premiums during whole 
+# A trivial deferred annuity tariff with no costs, premiums during whole
 # deferral period, 30 years annuity payments:
 tariff = InsuranceTarif$new(name="Test Annuity", type="annuity", tarif = "Annuity 1A",
-    mortalityTable = AVOe2005R.unisex, i=0.01, 
-    deferralPeriod = function(params, ...) { params$ContractData$premiumPeriod }, 
+    mortalityTable = AVOe2005R.unisex, i=0.01,
+    deferralPeriod = function(params, ...) { params$ContractData$premiumPeriod },
     policyPeriod = function(params, ...) { params$ContractData$premiumPeriod + 30 }
 )
 contractGrid(
@@ -98,5 +98,25 @@ contractGrid(
     sumInsured = 1000,
     contractClosing = as.Date("2023-11-01")
 )
+
+library("MortalityTables")
+mortalityTables.load("Austria_Annuities_AVOe2005R")
+# A trivial deferred annuity tariff with no costs, premiums during whole
+# deferral period, 30 years annuity payments:
+tariff = InsuranceTarif$new(name="Test Annuity", type="annuity", tarif = "Annuity 1A",
+    mortalityTable = AVOe2005R.unisex, i=0.01,
+    deferralPeriod = function(params, ...) { params$ContractData$premiumPeriod },
+    policyPeriod = function(params, ...) { params$ContractData$premiumPeriod + 30 }
+)
+contractGridPremium(
+    axes = list(
+        age = seq(20, 60, 10),
+        premiumPeriod = seq(5,30, 5)
+    ),
+    tarif = tariff,
+    sumInsured = 1000,
+    contractClosing = as.Date("2023-11-01")
+)
+
 
 }

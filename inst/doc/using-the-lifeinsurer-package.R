@@ -56,25 +56,25 @@ contract.L71U  = InsuranceContract$new(
   sumInsured = 100000);
 
 ## ----SimpleExampleRiskValuesPremCode, eval=F----------------------------------
-#  contract.L71U$Values$premiums
+# contract.L71U$Values$premiums
 
 ## ----SimpleExampleRiskValuesPremCodeOut, echo=F-------------------------------
 contract.L71U$Values$premiums %>% kable
 
 ## ----SimpleExampleRiskValuesResCode, eval=F-----------------------------------
-#  contract.L71U$Values$reserves
+# contract.L71U$Values$reserves
 
 ## ----SimpleExampleRiskValuesResOut, echo=F------------------------------------
 contract.L71U$Values$reserves %>% pander()
 
 ## ----SimpleExampleRiskCFCode, eval=F------------------------------------------
-#  contract.L71U$Values$cashFlows
+# contract.L71U$Values$cashFlows
 
 ## ----SimpleExampleRiskCFOut, echo=F-------------------------------------------
 contract.L71U$Values$cashFlows %>% select(starts_with('premiums'), starts_with('death'), -death_Refund_past ) %>% pander()
 
 ## ----SimpleExampleRiskCFCostCode, eval=F--------------------------------------
-#  contract.L71U$Values$cashFlowsCosts[,,,"survival"]
+# contract.L71U$Values$cashFlowsCosts[,,,"survival"]
 
 ## ----SimpleExampleRiskCFCostOut, echo=F, results="asis"-----------------------
 for (base in dimnames(contract.L71U$Values$cashFlowsCosts)[[3]]) {
@@ -83,13 +83,13 @@ for (base in dimnames(contract.L71U$Values$cashFlowsCosts)[[3]]) {
 }
 
 ## ----SimpleExampleRiskPVCode, eval=F------------------------------------------
-#  contract.L71U$Values$presentValues
+# contract.L71U$Values$presentValues
 
 ## ----SimpleExampleRiskPVOut, echo=F-------------------------------------------
 contract.L71U$Values$presentValues %>% as.data.frame() %>% select(starts_with('premiums'), starts_with('death'), -death_Refund_past ) %>% pander(round=5)
 
 ## ----SimpleExampleRiskPVCostCode, eval=F--------------------------------------
-#  contract.L71U$Values$presentValuesCosts
+# contract.L71U$Values$presentValuesCosts
 
 ## ----SimpleExampleRiskPVCostOut, echo=F, results="asis"-----------------------
 for (base in dimnames(contract.L71U$Values$presentValuesCosts)[[3]]) {
@@ -98,26 +98,26 @@ for (base in dimnames(contract.L71U$Values$presentValuesCosts)[[3]]) {
 }
 
 ## ----SimpleExampleRiskPVPremCode, eval=F--------------------------------------
-#  contract.L71U$Values$premiums
+# contract.L71U$Values$premiums
 
 ## ----SimpleExampleRiskPVPremOut, echo=F---------------------------------------
 contract.L71U$Values$premiums %>% data.frame() %>% pander()
 
 ## ----SimpleExampleRiskPremiumsCode, eval=F------------------------------------
-#  contract.L71U$Values$reserves
+# contract.L71U$Values$reserves
 
 ## ----SimpleExampleRiskPremiumsOut, echo=F-------------------------------------
 contract.L71U$Values$reserves %>% pander(digits=2)
 
 ## ----SimpleExampleRiskPremiumCompositionCode, eval=F--------------------------
-#  contract.L71U$Values$premiumComposition
+# contract.L71U$Values$premiumComposition
 
 ## ----SimpleExampleRiskPremiumCompositionOut, echo=F---------------------------
 contract.L71U$Values$premiumComposition %>% as.data.frame() %>% select(-loading.frequency, -rebate.premium, -rebate.partner, -profit.advance, -rebate.sum, -charge.noMedicalExam, -premium.risk.actual, -premium.risk.security, -risk.disease, -premium.risk.disease.actual, -premium.risk.disease.security, -starts_with('Zillmer')) %>% pander()
 
 ## ----SimpleExampleRiskConversionCode, eval=F----------------------------------
-#  contract.L71U.prf = contract.L71U$premiumWaiver(t = 3)
-#  contract.L71U.prf$Values$reserves
+# contract.L71U.prf = contract.L71U$premiumWaiver(t = 3)
+# contract.L71U.prf$Values$reserves
 
 ## ----SimpleExampleRiskConversionOut, echo=F-----------------------------------
 contract.L71U.prf = contract.L71U$premiumWaiver(t = 3)
@@ -315,13 +315,13 @@ contract.PureEnd = InsuranceContract$new(
   )
 
 ## ----Contract.premiums,eval=F-------------------------------------------------
-#  contract.PureEnd$Values$premiums
+# contract.PureEnd$Values$premiums
 
 ## ----Contract.premiumsOUT, echo = F-------------------------------------------
 contract.PureEnd$Values$premiums %>% kable(digits=4)
 
 ## ----Contract.premiumComposition,eval=F---------------------------------------
-#  contract.PureEnd$Values$premiumComposition
+# contract.PureEnd$Values$premiumComposition
 
 ## ----Contract.premiumCompositionOUT, echo = F---------------------------------
 contract.PureEnd$Values$premiumComposition %>% as.data.frame() %>% rowid_to_column("t") %>% mutate(t = t-1) %>% select(t, charged, tax, loading.frequency, gross, gamma, beta, alpha, alpha.noZillmer, alpha.Zillmer,  Zillmer, net, risk, savings) %>% pander
@@ -338,19 +338,19 @@ contract.PureEnd.NoRefund = InsuranceContract$new(
 
 
 ## ----Contract.premiumsCode, eval = F------------------------------------------
-#  cbind(`With refund` = contract.PureEnd$Values$premiums, `Without refund` = contract.PureEnd.NoRefund$Values$premiums)
+# cbind(`With refund` = contract.PureEnd$Values$premiums, `Without refund` = contract.PureEnd.NoRefund$Values$premiums)
 
 ## ----Contract.premiumsOut, echo = F-------------------------------------------
 cbind(`With refund` = contract.PureEnd$Values$premiums, `Without refund` = contract.PureEnd.NoRefund$Values$premiums) %>% pander
 
 ## ----Contract.riskpremiumsCode, eval = F--------------------------------------
-#  cbind(
-#    `Gross premium with refund` = contract.PureEnd$Values$premiumComposition[,"gross"],
-#    `Gross premium w/o refund` = contract.PureEnd.NoRefund$Values$premiumComposition[,"gross"],
-#    `Risk premium with refund` = contract.PureEnd$Values$premiumComposition[,"risk"],
-#    `Risk premium w/o refund` = contract.PureEnd.NoRefund$Values$premiumComposition[,"risk"]
-#  )
-#  
+# cbind(
+#   `Gross premium with refund` = contract.PureEnd$Values$premiumComposition[,"gross"],
+#   `Gross premium w/o refund` = contract.PureEnd.NoRefund$Values$premiumComposition[,"gross"],
+#   `Risk premium with refund` = contract.PureEnd$Values$premiumComposition[,"risk"],
+#   `Risk premium w/o refund` = contract.PureEnd.NoRefund$Values$premiumComposition[,"risk"]
+# )
+# 
 
 ## ----Contract.riskpremiumsOut, echo = F---------------------------------------
 cbind(
@@ -445,17 +445,17 @@ contract.PureEnd.NoRefund.Prf$Values$reserves %>% pander
 initializeCosts() %>% dimnames
 
 ## ----costExample, eval=F------------------------------------------------------
-#  initializeCosts(alpha = 0.04, Zillmer = 0.025, beta = 0.05, gamma.contract = 0.001)
-#  
-#  # the above is the short form of:
-#  costs.Bsp = initializeCosts()
-#  costs.Bsp[["alpha", "SumPremiums", "once"]] = 0.04
-#  costs.Bsp[["Zillmer", "SumPremiums", "once"]] = 0.025 # German Zillmer maximum
-#  costs.Bsp[["beta", "GrossPremium", "PremiumPeriod"]] = 0.05
-#  costs.Bsp[["gamma", "SumInsured", "PolicyPeriod"]] = 0.001
+# initializeCosts(alpha = 0.04, Zillmer = 0.025, beta = 0.05, gamma.contract = 0.001)
+# 
+# # the above is the short form of:
+# costs.Bsp = initializeCosts()
+# costs.Bsp[["alpha", "SumPremiums", "once"]] = 0.04
+# costs.Bsp[["Zillmer", "SumPremiums", "once"]] = 0.025 # German Zillmer maximum
+# costs.Bsp[["beta", "GrossPremium", "PremiumPeriod"]] = 0.05
+# costs.Bsp[["gamma", "SumInsured", "PolicyPeriod"]] = 0.001
 
 ## ----costCashFlowsCode, eval=F------------------------------------------------
-#  contract.PureEnd.NoRefund$Values$absCashFlows
+# contract.PureEnd.NoRefund$Values$absCashFlows
 
 ## ----costCashFlows, echo=F----------------------------------------------------
 contract.PureEnd.NoRefund$Values$absCashFlows[1:11,] %>% select(alpha, Zillmer, beta, gamma, gamma_nopremiums, unitcosts) %>% pander()
@@ -510,6 +510,55 @@ contractGridPremium(
   contractClosing = as.Date("2020-09-01")
 ) %>% kableTable(digits = 2)
 
+## ----RoundingHelper-----------------------------------------------------------
+# Define three different rounding IDs / instances: "raw" with rounding to
+# the nearest integer, "hundred" with rounding to the nearest multiple of 
+# 100 and "accurate" rounded to the nearest multiple of 0.0001:
+rounding = RoundingHelper$new(raw = 0, hundred = -2, accurate = 4)
+
+# The rounding IDs are used as first argument in the rounding$round function:
+rounding$round("raw", c(1234.567891, 0.00012345, 1234))
+rounding$round("hundred", c(1234.567891, 0.00012345, 1234))
+rounding$round("accurate", c(1234.567891, 0.00012345, 1234))
+
+# If the given spec does not exist, no rounding it applied
+rounding$round("non-existing", c(1234.567891, 0.00012345, 1234))
+
+# Add a new spec with different settings:
+rounding$setRounding("non-existing", 1)
+rounding$round("non-existing", c(1234.567891, 0.00012345, 1234))
+
+## ----RoundingHelper.Contract--------------------------------------------------
+Tarif.EndowmentSI = InsuranceTarif$new(
+    type = "pureendowment",
+    tarif = "Endow1",
+    age = 40, policyPeriod = 20,
+    premiumRefund = 1,
+
+    mortalityTable = mort.AT.census.2011.unisex,
+    cost = initializeCosts(alpha = 0.04, gamma.contract = 0.0005),
+    i = 0.03,
+    sumInsured = 10000,
+    contractClosing = as.Date("2020-09-01")
+)
+Tarif.EndowmentSI.rounded = Tarif.EndowmentSI$createModification(
+    Rounding = list("Premium gross unit" = 3, "Premium net unit" = 6, "Premium net" = 2)
+)
+Contract.sumInsured = InsuranceContract$new(tarif = Tarif.EndowmentSI)
+Contract.sumInsured.rounded = InsuranceContract$new(tarif = Tarif.EndowmentSI.rounded)
+
+
+# premiums of the original tariff:
+Contract.sumInsured$Values$premiums[c("unit.net", "-1et", "unit.gross", "gross")]
+
+## ----eval=TRUE,echo=FALSE,result='asis'---------------------------------------
+src = list.files(path = file.path(getwd(), "R"), pattern = ".R$", full.names = TRUE)
+filecontents = unlist(lapply(src, readLines, warn = FALSE), use.names = FALSE)
+results = stringr::str_extract(filecontents, "\\$round\\(\"([^\"]*)\"", group = 1)
+results = results[!is.na(results)]
+results = results[!(results %in% c("raw", "hundred", "accurate", "non-existing"))] %>% sort
+cat(paste('-', results), sep = '\n')
+
 ## ----Grid.Endowment.compare, results = "hide"---------------------------------
 grd = contractGridPremium(
   axes = list(tarif = c(Tarif.PureEnd, Tarif.Endowment, Tarif.PureEnd.SP), premiumRefund = c(0, 0.5, 1)),
@@ -531,17 +580,17 @@ grd = contractGrid(
 )
 
 ## ----Grid.Endowment.compareOtherG1, eval = F----------------------------------
-#  # Compare net premiums without loadings:
-#  contractGridPremium(grd, premium = "net")
+# # Compare net premiums without loadings:
+# contractGridPremium(grd, premium = "net")
 
 ## ----Grid.Endowment.compareOtherG1Out, echo = F-------------------------------
 contractGridPremium(grd, premium = "net") %>% kableTable
 
 ## ----Grid.Endowment.compareOtherG2, eval = F----------------------------------
-#  # Compare premium sums over the whole contract period (all contracts have the same sumInsured)
-#  contractGridPremium(grd, .fun = function(c) {with(c$Values,
-#       unitPremiumSum * premiums["written"])
-#  })
+# # Compare premium sums over the whole contract period (all contracts have the same sumInsured)
+# contractGridPremium(grd, .fun = function(c) {with(c$Values,
+#      unitPremiumSum * premiums["written"])
+# })
 
 ## ----Grid.Endowment.compareOtherG2Out, echo = F-------------------------------
 # Compare premium sums over the whole contract period (all contracts have the same sumInsured)
@@ -550,16 +599,16 @@ contractGridPremium(grd, .fun = function(c) {with(c$Values,
 }) %>% kableTable(digits = 2)
 
 ## ----Grid.Endowment.compareOtherG3, eval = F----------------------------------
-#  # Compare risk premiums at time t=10 (the 11th row of the premium decomposition)
-#  contractGridPremium(grd, .fun = function(c) {c$Values$premiumComposition[11, "risk"]})
+# # Compare risk premiums at time t=10 (the 11th row of the premium decomposition)
+# contractGridPremium(grd, .fun = function(c) {c$Values$premiumComposition[11, "risk"]})
 
 ## ----Grid.Endowment.compareOtherG3Out, echo = F-------------------------------
 # Compare risk premiums at time t=10 (the 11th row of the premium decomposition)
 contractGridPremium(grd, .fun = function(c) {c$Values$premiumComposition[11, "risk"]}) %>% kableTable(digits = 2)
 
 ## ----Grid.Endowment.compareOtherG4, eval = F----------------------------------
-#  # Compare present value of all benefits and refunds (without costs) at time t=0
-#  contractGridPremium(grd, .fun = function(c) {c$Values$absPresentValues[1, "benefitsAndRefund"]})
+# # Compare present value of all benefits and refunds (without costs) at time t=0
+# contractGridPremium(grd, .fun = function(c) {c$Values$absPresentValues[1, "benefitsAndRefund"]})
 
 ## ----Grid.Endowment.compareOtherG4Out, echo = F-------------------------------
 # Compare present value of all benefits and refunds (without costs) at time t=0
@@ -584,12 +633,12 @@ for (d in dimnames(grd)[[4]]) {
 }
 
 ## ----ExcelExport,eval=F-------------------------------------------------------
-#  contract.exportExample = contract.PureEnd.NoRefund$clone()$
-#    addDynamics(t = 3, SumInsuredDelta = 10000)$
-#    addDynamics(t = 5, SumInsuredDelta = 15000)$
-#    addDynamics(t = 10, SumInsuredDelta = 15000)$
-#    addDynamics(t = 14, SumInsuredDelta = 10000)
-#  exportInsuranceContract.xlsx(contract.exportExample, filename = "Example_PureEndowment_Dynamics.xlsx")
+# contract.exportExample = contract.PureEnd.NoRefund$clone()$
+#   addDynamics(t = 3, SumInsuredDelta = 10000)$
+#   addDynamics(t = 5, SumInsuredDelta = 15000)$
+#   addDynamics(t = 10, SumInsuredDelta = 15000)$
+#   addDynamics(t = 14, SumInsuredDelta = 10000)
+# exportInsuranceContract.xlsx(contract.exportExample, filename = "Example_PureEndowment_Dynamics.xlsx")
 
 ## ----VmGlgExample-------------------------------------------------------------
 VMGL.contract = InsuranceContract$new(
@@ -854,7 +903,7 @@ contract.LifePP = InsuranceContract$new(
 )
 
 ## ----advanceProfitExample.PremiumComposition, eval=F--------------------------
-#  contract.LifePP$Values$premiumComposition
+# contract.LifePP$Values$premiumComposition
 
 ## ----advanceProfitExample.PremiumCompositionOUT, echo=F-----------------------
 contract.LifePP$Values$premiumComposition[,c("charged", "tax", "unitcosts", "profit.advance", "gross", "net")] %>% as.data.frame() %>% rowid_to_column("t") %>% mutate(t = t-1) %>% pander
@@ -976,11 +1025,11 @@ contractGridPremium(
 
 
 ## ----termfix.Zillmeradjust.Hook, eval=FALSE-----------------------------------
-#    costs = initializeCosts(alpha = 0.04, Zillmer = 0.035, gamma = 0.0015, gamma.fullcontract = 0.001),
-#    adjustPremiumCoefficients = function(coeff, type, premiums, params, values, premiumCalculationTime) {
-#      if (type == "Zillmer") {
-#        coeff[["SumInsured"]][["costs"]]["gamma", "SumInsured", "guaranteed"] = 1
-#      }
-#      coeff
-#    },
+#   costs = initializeCosts(alpha = 0.04, Zillmer = 0.035, gamma = 0.0015, gamma.fullcontract = 0.001),
+#   adjustPremiumCoefficients = function(coeff, type, premiums, params, values, premiumCalculationTime) {
+#     if (type == "Zillmer") {
+#       coeff[["SumInsured"]][["costs"]]["gamma", "SumInsured", "guaranteed"] = 1
+#     }
+#     coeff
+#   },
 

@@ -236,6 +236,12 @@ InsuranceTarif = R6Class(
 
       # Fill all remaining uninitialized values with their defaults, except for profit participation params
       self$Parameters = InsuranceContract.ParametersFallback(self$Parameters, InsuranceContract.ParameterDefaults, ppParameters = FALSE);
+
+      # Properly set up the rounding helper
+      if (is.null(self$Parameters$Hooks$Rounding)) self$Parameters$Hooks$Rounding = list()
+      if (is.list(self$Parameters$Hooks$Rounding)){
+        self$Parameters$Hooks$Rounding = do.call(RoundingHelper$new, self$Parameters$Hooks$Rounding)
+      }
     },
 
     #' @description create a copy of a tariff with certain parameters changed
@@ -271,6 +277,11 @@ InsuranceTarif = R6Class(
       if (!missing(tariffType)) cloned$tariffType = tariffType;
 
       cloned$Parameters = InsuranceContract.ParametersFill(cloned$Parameters, ...);
+      # Properly set up the rounding helper
+      if (is.null(cloned$Parameters$Hooks$Rounding)) cloned$Parameters$Hooks$Rounding = list()
+      if (is.list(cloned$Parameters$Hooks$Rounding)){
+        cloned$Parameters$Hooks$Rounding = do.call(RoundingHelper$new, cloned$Parameters$Hooks$Rounding)
+      }
       cloned
     },
 
@@ -364,7 +375,8 @@ InsuranceTarif = R6Class(
         } else {
           px = 1 - qx
         }
-        df = data.frame(age = ages, qx = qx, ix = ix, px = px, row.names = ages - age)
+        rd = params$Hooks$Rounding
+        df = data.frame(age = ages, qx = rd$round("qx", qx), ix = rd$round("ix", ix), px = rd$round("px", px), row.names = ages - age)
         df
       }
     },
@@ -462,7 +474,7 @@ InsuranceTarif = R6Class(
     #'   - For constant death benefit it will be rep(1, policyPeriod),
     #'   - for linearly decreasing sum insured it will be (policyPeriod:0)/policyPeriod
     #' @details Not to be called directly, but implicitly by the [InsuranceContract] object.
-    #' @param len The desired length of the returned data frame (the number of contract periods desire)
+    #' @param len The desired length of the returned data frame (the number of contract periods desired)
     getDeathCF = function(len, params, values) {
       if (getOption('LIC.debug.getDeathCF', FALSE)) {
         browser();
@@ -481,6 +493,30 @@ InsuranceTarif = R6Class(
           # constant death benefit
           pad0(rep(benefit, period), len)
         }
+      }
+    },
+
+    #' @description Returns the unit survival cash flow profile for the whole contract
+    #' period (after potential deferral period!)
+    #'   - a single numeric value indicates a single survival payment at the end of the contract
+    #'   - a vector of numeric values indicates potentially multiple survival payments for the whole contract period (paddded with 0 to the full contract length if shorter)
+    #' @details Not to be called directly, but implicitly by the [InsuranceContract] object.
+    #' @param len The desired length of the returned data frame (the number of contract periods desired)
+    getSurvivalCF = function(len, params, values) {
+      if (getOption('LIC.debug.getSurvivalCF', FALSE)) {
+        browser();
+      }
+      benefit = valueOrFunction(params$ContractData$survivalBenefit, len = len, params = params, values = values)
+      if (is.null(benefit)) {
+        benefit = 1
+      }
+
+      if (is.vector(benefit) && length(benefit) == 1) {
+        c(rep(0, len - 1), benefit)
+      } else {
+        # If survivalBenefit is (or returns) a vector, treat it as yearly
+        # survival payments, pad it to the desired length
+        pad0(benefit, len)
       }
     },
 
@@ -537,7 +573,7 @@ InsuranceTarif = R6Class(
         deathCF = self$getDeathCF(values$int$l - 1 - deferralPeriod, params = params, values = values)
 
         if (self$tariffType == "endowment" || self$tariffType == "pureendowment" || self$tariffType == "endowment + dread-disease") {
-          cf$survival = c(rep(0, values$int$policyTerm), 1)
+          cf$survival = pad0(self$getSurvivalCF(len = values$int$l, params = params, values = values), values$int$l)
         }
         if (self$tariffType == "endowment" || self$tariffType == "wholelife" || self$tariffType == "endowment + dread-disease") {
           cf$death = c(rep(0, deferralPeriod), deathCF, 0)
@@ -704,6 +740,7 @@ InsuranceTarif = R6Class(
       if (getOption('LIC.debug.presentValueCashFlows', FALSE)) {
         browser();
       }
+      rd = params$Hooks$Rounding
 
       qq = self$getTransitionProbabilities(params, values);
 
@@ -723,17 +760,17 @@ InsuranceTarif = R6Class(
         (values$cashFlows[,"death_GrossPremium"] - values$cashFlows[,"premiums_advance"]);
 
       pv = cbind(
-        premiums = pvf$survival(values$cashFlows$premiums_advance, values$cashFlows$premiums_arrears,
-          m = params$ContractData$premiumFrequency, mCorrection = premiumFreqCorr),
-        additional_capital = pvf$survival(advance = values$cashFlows$additional_capital),
-        guaranteed = pvf$guaranteed(values$cashFlows$guaranteed_advance, values$cashFlows$guaranteed_arrears),
-        survival = pvf$survival(values$cashFlows$survival_advance, values$cashFlows$survival_arrears),
-        death_SumInsured = pvf$death(values$cashFlows$death_SumInsured),
-        disease_SumInsured = pvf$disease(values$cashFlows$disease_SumInsured),
-        death_GrossPremium = pvRefund,
-        death_Refund_past = pvRefundPast,
-        death_Refund_future = pvRefund - pvRefundPast,
-        death_PremiumFree = pvf$death(values$cashFlows$death_PremiumFree)
+        premiums = rd$round("PV Premiums", pvf$survival(values$cashFlows$premiums_advance, values$cashFlows$premiums_arrears,
+          m = params$ContractData$premiumFrequency, mCorrection = premiumFreqCorr)),
+        additional_capital = rd$round("PV AdditionalCapital", pvf$survival(advance = values$cashFlows$additional_capital)),
+        guaranteed = rd$round("PV Guarantee", pvf$guaranteed(values$cashFlows$guaranteed_advance, values$cashFlows$guaranteed_arrears)),
+        survival = rd$round("PV Survival", pvf$survival(values$cashFlows$survival_advance, values$cashFlows$survival_arrears)),
+        death_SumInsured = rd$round("PV Death", pvf$death(values$cashFlows$death_SumInsured)),
+        disease_SumInsured = rd$round("PV Disease", pvf$disease(values$cashFlows$disease_SumInsured)),
+        death_GrossPremium = rd$round("PV Death PremiumRefund", pvRefund),
+        death_Refund_past = rd$round("PV Death PremiumRefund Past", pvRefundPast),
+        death_Refund_future = rd$round("PV Death PremiumRefund Future", pvRefund - pvRefundPast),
+        death_PremiumFree = rd$round("PV Death PremiumFree", pvf$death(values$cashFlows$death_PremiumFree))
       );
 
       rownames(pv) <- pad0(rownames(qq), values$int$l);
@@ -794,6 +831,8 @@ InsuranceTarif = R6Class(
             pvfben$disease(cf$disease_SumInsured * cfCosts);
       }
 
+      rd = params$Hooks$Rounding;
+      pvc = rd$round("PV Costs", pvc)
       applyHook(hook = params$Hooks$adjustPresentValuesCosts, val = pvc, params = params, values = values, presentValues = presentValues)
     },
 
@@ -808,6 +847,7 @@ InsuranceTarif = R6Class(
       if (getOption('LIC.debug.getAbsCashFlows', FALSE)) {
         browser();
       }
+      rd = params$Hooks$Rounding;
 
       # TODO: Set up a nice list with coefficients for each type of cashflow,
       # rather than multiplying each item manually (this also mitigates the risk
@@ -831,6 +871,8 @@ InsuranceTarif = R6Class(
       values$cashFlows[,"death_SumInsured"] = values$cashFlows[,"death_SumInsured"] + values$cashFlows[,"death_GrossPremium"]
       colnames(values$cashFlows)[colnames(values$cashFlows) == "death_SumInsured"] = "death";
       # cashFlows[,"death_GrossPremium"] = NULL;
+      values$cashFlows = rd$round("CF absolute", values$cashFlows);
+
 
       # costs relative to sumInsured are already set up as the correct multiple
       # of the original SI, including the dynamic changes over time!
@@ -840,6 +882,7 @@ InsuranceTarif = R6Class(
         values$cashFlowsCosts[,,"NetPremium",] * values$premiums[["net"]] +
         # values$cashFlowsCosts[,,"Benefits",] * TODO!!!
         values$cashFlowsCosts[,,"Constant",];
+      values$cashFlowsCosts = rd$round("CF costs absolute", values$cashFlowsCosts);
 
       # Handle survival CF differently, because we don't want ".survival" in the column names!
       cbind(values$cashFlows, values$cashFlowsCosts[,,"survival"], values$cashFlowsCosts[,,-1])
@@ -874,6 +917,8 @@ InsuranceTarif = R6Class(
       pv[,"death_SumInsured"] = pv[,"death_SumInsured"] + pv[,"death_GrossPremium"]
       colnames(pv)[colnames(pv) == "death_SumInsured"] = "death";
 
+      pv = params$Hooks$Rounding$round("PV absolute", pv);
+
       cbind("premiums.unit" = values$presentValues[,"premiums"], pv)
     },
 
@@ -906,6 +951,10 @@ InsuranceTarif = R6Class(
         values$presentValuesCosts[,,"Constant",] / params$ContractData$sumInsured,
         dims = 2)
 
+      rd = params$Hooks$Rounding;
+      benefits = rd$round("PV abs benefits", benefits)
+      allBenefits = rd$round("PV abs allBenefits", allBenefits)
+      benefitsCosts = rd$round("PV abs benefitsCosts", benefitsCosts)
 
       cbind(
         benefits = benefits,
@@ -994,6 +1043,9 @@ InsuranceTarif = R6Class(
         affected = c("Zillmer")
         if (params$Features$betaGammaInZillmer) {
           affected = c(affected, "beta", "gamma")
+        }
+        if (params$Features$gammaInZillmer) {
+          affected = c(affected, "gamma")
         }
         coeff[["SumInsured"]][["costs"]][affected,"SumInsured",  ] = 1;
         coeff[["SumInsured"]][["costs"]][affected,"SumPremiums", ] = values$unitPremiumSum * premiums[["unit.gross"]];
@@ -1120,7 +1172,7 @@ InsuranceTarif = R6Class(
         temp = temp /
           (enumerator / denominator * (1 + noMedicalExam.relative + extraChargeGrossPremium) + noMedicalExam - sumRebate - extraRebate);
       }
-      sumInsured = temp
+      sumInsured = params$Hooks$Rounding$round("sumInsured", temp);
 
       sumInsured
     },
@@ -1134,6 +1186,8 @@ InsuranceTarif = R6Class(
       if (getOption('LIC.debug.premiumCalculation', FALSE)) {
         browser();
       }
+      rd = params$Hooks$Rounding;
+
       loadings = params$Loadings;
       sumInsured = params$ContractData$sumInsured
       values$premiums = c(
@@ -1165,8 +1219,8 @@ InsuranceTarif = R6Class(
       coeff = self$getPremiumCoefficients("gross", pv * 0, pvCost * 0, premiums = values$premiums, params = params, values = values, premiumCalculationTime = premiumCalculationTime)
       enumerator  = sum(coeff[["SumInsured"]][["benefits"]] * pv) + sum(coeff[["SumInsured"]][["costs"]] * pvCost);
       denominator = sum(coeff[["Premium"   ]][["benefits"]] * pv) + sum(coeff[["Premium"   ]][["costs"]] * pvCost);
-      values$premiums[["unit.gross"]] = enumerator/ifelse(denominator == 0, 1, denominator) * (1 + loadings$ongoingAlphaGrossPremium);
-      values$premiums[["gross"]] = values$premiums[["unit.gross"]] * sumInsured;
+      values$premiums[["unit.gross"]] = rd$round("Premium gross unit", enumerator/ifelse(denominator == 0, 1, denominator) * (1 + loadings$ongoingAlphaGrossPremium));
+      values$premiums[["gross"]] = rd$round("Premium gross", values$premiums[["unit.gross"]] * sumInsured);
       coefficients[["gross"]] = coeff;
 
       # ======================================================================= =
@@ -1175,8 +1229,8 @@ InsuranceTarif = R6Class(
       coeff = self$getPremiumCoefficients("net", pv*0, pvCost*0, premiums = values$premiums, params = params, values = values, premiumCalculationTime = premiumCalculationTime)
       enumerator  = sum(coeff[["SumInsured"]][["benefits"]] * pv) + sum(coeff[["SumInsured"]][["costs"]] * pvCost);
       denominator = sum(coeff[["Premium"   ]][["benefits"]] * pv) + sum(coeff[["Premium"   ]][["costs"]] * pvCost);
-      values$premiums[["unit.net"]] = enumerator/ifelse(denominator == 0, 1, denominator);
-      values$premiums[["net"]] = values$premiums[["unit.net"]] * sumInsured;
+      values$premiums[["unit.net"]] = rd$round("Premium net unit", enumerator/ifelse(denominator == 0, 1, denominator));
+      values$premiums[["net"]] = rd$round("Premium net", values$premiums[["unit.net"]] * sumInsured);
       coefficients[["net"]] = coeff;
 
       # ======================================================================= =
@@ -1185,8 +1239,8 @@ InsuranceTarif = R6Class(
       coeff = self$getPremiumCoefficients("Zillmer", pv * 0, pvCost * 0, premiums = values$premiums, params = params, values = values, premiumCalculationTime = premiumCalculationTime);
       enumerator  = sum(coeff[["SumInsured"]][["benefits"]] * pv) + sum(coeff[["SumInsured"]][["costs"]] * pvCost);
       denominator = sum(coeff[["Premium"   ]][["benefits"]] * pv) + sum(coeff[["Premium"   ]][["costs"]] * pvCost);
-      values$premiums[["unit.Zillmer"]] = enumerator/ifelse(denominator == 0, 1, denominator);
-      values$premiums[["Zillmer"]] = values$premiums[["unit.Zillmer"]] * sumInsured;
+      values$premiums[["unit.Zillmer"]] = rd$round("Premium Zillmer unit", enumerator/ifelse(denominator == 0, 1, denominator));
+      values$premiums[["Zillmer"]] = rd$round("Premium Zillmer", values$premiums[["unit.Zillmer"]] * sumInsured);
       coefficients[["Zillmer"]] = coeff;
 
 
@@ -1194,6 +1248,7 @@ InsuranceTarif = R6Class(
       # Additional premium components (after gross premium)
       # ----------------------------------------------------------------------- -
       # The written premium is the gross premium with additional loadings, rebates, unit costs and taxes
+      # TODO: Think through, how each of the components should / could be rounded
       tax           = valueOrFunction(loadings$tax,          params = params, values = values);
       unitCosts     = valueOrFunction(loadings$unitcosts,    params = params, values = values);
       noMedicalExam = valueOrFunction(loadings$noMedicalExam,params = params, values = values);
@@ -1234,10 +1289,10 @@ InsuranceTarif = R6Class(
       premiumBeforeTax = premiumBeforeTax * (1 - premiumRebate - advanceProfitParticipationUnitCosts - partnerRebate);
       premiumBeforeTax.y = premiumBeforeTax * (1 + frequencyLoading);
       premiumBeforeTax = premiumBeforeTax.y / params$ContractData$premiumFrequency;
-      values$premiums[["written_yearly"]] = premiumBeforeTax.y * (1 + tax)
-      values$premiums[["written_beforetax"]] = premiumBeforeTax;
-      values$premiums[["tax"]] = premiumBeforeTax * tax;
-      values$premiums[["written"]] = premiumBeforeTax * (1 + tax);
+      values$premiums[["written_yearly"]] = rd$round("Premium written yearly", premiumBeforeTax.y * (1 + tax))
+      values$premiums[["written_beforetax"]] = rd$round("Premium written beforeTax", premiumBeforeTax);
+      values$premiums[["tax"]] = rd$round("Premium tax", premiumBeforeTax * tax);
+      values$premiums[["written"]] = rd$round("Premium written", values$premiums[["written_beforetax"]] + values$premiums[["tax"]]);
 
       applyHook(
         params$Hooks$adjustPremiums,
@@ -1255,6 +1310,7 @@ InsuranceTarif = R6Class(
       if (getOption('LIC.debug.reserveCalculation', FALSE)) {
         browser();
       }
+      rd = params$Hooks$Rounding;
       t = "0"
       securityFactor = (1 + valueOrFunction(params$Loadings$security, params = params, values = values));
       ppScheme      = params$ProfitParticipation$profitParticipationScheme;
@@ -1262,10 +1318,10 @@ InsuranceTarif = R6Class(
       absPV = applyHook(params$Hooks$adjustPVForReserves, values$absPresentValues, params = params, values = values);
 
       # Net, Zillmer and Gross reserves
-      resNet = absPV[,"benefitsAndRefund"] * securityFactor - values$premiums[["net"]] * absPV[,"premiums.unit"];
+      resNet = rd$round("Res net", absPV[,"benefitsAndRefund"] * securityFactor - values$premiums[["net"]] * absPV[,"premiums.unit"]);
       BWZcorr = ifelse(absPV[t, "premiums"] == 0, 0,
                        absPV[t, "Zillmer"] / absPV[t, "premiums"]) * absPV[,"premiums"];
-      resZ = resNet - BWZcorr;
+      resZ = rd$round("Res Zillmer", resNet - BWZcorr);
 
       resAdeq = absPV[,"benefitsAndRefund"] * securityFactor +
           absPV[,"alpha"] + absPV[,"beta"] + absPV[,"gamma"] -
@@ -1273,10 +1329,11 @@ InsuranceTarif = R6Class(
       if (params$Features$unitcostsInGross) {
           resAdeq = resAdeq + absPV[, "unitcosts"]
       }
+      resAdeq = rd$round("Res adequate", resAdeq)
 
-      resGamma = absPV[,"gamma"] -
+      resGamma = rd$round("Res gamma", absPV[,"gamma"] -
         ifelse(absPV[t, "premiums"] == 0, 0,
-               absPV[t, "gamma"] / absPV[t, "premiums"]) * absPV[,"premiums"]
+               absPV[t, "gamma"] / absPV[t, "premiums"]) * absPV[,"premiums"]);
 
 
       advanceProfitParticipation = 0;
@@ -1313,7 +1370,10 @@ InsuranceTarif = R6Class(
         resContractual = resAdeq + resGamma
         resReduction = resAdeq + alphaRefund;
       }
-      resConversion = resContractual * (1 - advanceProfitParticipation);
+      resContractual = rd$round("Res contractual", resContractual)
+      resReduction = rd$round("Res reduction", resReduction)
+
+      resConversion = rd$round("Res conversion", resContractual * (1 - advanceProfitParticipation));
       if (params$Features$surrenderIncludesCostsReserves) {
         resReduction = resReduction + resGamma;
       }
@@ -1353,6 +1413,7 @@ InsuranceTarif = R6Class(
           partnerRebate = valueOrFunction(params$Loadings$partnerRebate, params = params, values = values);
           surrenderValue = resReduction * (1 - advanceProfitParticipationUnitCosts - partnerRebate);
       }
+      surrenderValue = rd$round("Surrender Value", surrenderValue)
 
 
       # Calculate new sum insured after premium waiver
@@ -1366,6 +1427,7 @@ InsuranceTarif = R6Class(
       newSI = ifelse(premiumfreePV == 0, 0,
         (premiumfreeValue - absPV[,"death_Refund_past"] * securityFactor - c(Storno)) /
         premiumfreePV * params$ContractData$sumInsured);
+      newSI = rd$round("Premiumfree SI", newSI)
 
       cbind(res,
             "PremiumsPaid" = Reduce("+", values$absCashFlows$premiums_advance, accumulate = TRUE),
@@ -1417,6 +1479,7 @@ InsuranceTarif = R6Class(
       if (getOption('LIC.debug.reserveCalculationBalanceSheet', FALSE)) {
         browser();
       }
+      rd = params$Hooks$Rounding
       reserves = values$reserves;
       years = length(reserves[,"Zillmer"]);
       # Balance sheet reserves:
@@ -1470,7 +1533,7 @@ InsuranceTarif = R6Class(
                   "unearned Premiums"     = unearnedPremiums
       );
       rownames(res) <- rownames(reserves);
-      res
+      rd$round("Balance Sheet", res)
     },
 
     #' @description Calculate the profit participation given the contract
@@ -1523,6 +1586,7 @@ InsuranceTarif = R6Class(
     #' @details Not to be called directly, but implicitly by the [InsuranceContract] object.
     #'          All premiums, reserves and present values have already been calculated.
     premiumDecomposition = function(params, values) {
+      # TODO: No rounding applied yet!
       if (getOption('LIC.debug.premiumDecomposition', FALSE)) {
         browser();
       }
